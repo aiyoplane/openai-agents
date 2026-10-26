@@ -11,10 +11,11 @@ import {
   wrapTool,
 } from '../src/index.js';
 
+// Shared factory using the canonical configuration contract.
 function makeAuthz(rules) {
   return createAiyoMcpAuthz({
-    rdp: createLocalRdp({ policy: { rules } }),
-    toolConfig: { transfer: { aiyoGated: true, action: { type: 'payment' } } },
+    rdp: createLocalRdp({ policy: { default_effect: 'deny', rules } }),
+    toolConfig: { transfer: { aiyo_gated: true, action: { type: 'payment' } } },
   });
 }
 
@@ -28,7 +29,7 @@ function makeTool() {
 }
 
 test('ALLOW runs the inner execute', async () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'allow' }]);
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'allow' }]);
   const gated = wrapTool(makeTool(), {
     authz,
     intentBuilder: (args) => ({ type: 'payment', amount: args.amount }),
@@ -37,8 +38,8 @@ test('ALLOW runs the inner execute', async () => {
   assert.match(result, /Transferred \$500/);
 });
 
-test('BLOCK prevents execute', async () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'block' }]);
+test('DENY prevents execute', async () => {
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'deny' }]);
   const gated = wrapTool(makeTool(), {
     authz,
     intentBuilder: (args) => ({ type: 'payment' }),
@@ -50,7 +51,7 @@ test('BLOCK prevents execute', async () => {
 });
 
 test('ESCALATE raises EscalationRequired or BlockedByPolicy', async () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'escalate' }]);
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'escalate' }]);
   const gated = wrapTool(makeTool(), {
     authz,
     intentBuilder: (args) => ({ type: 'payment' }),
@@ -62,7 +63,7 @@ test('ESCALATE raises EscalationRequired or BlockedByPolicy', async () => {
 });
 
 test('Broken intentBuilder blocks', async () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'allow' }]);
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'allow' }]);
   const gated = wrapTool(makeTool(), {
     authz,
     intentBuilder: () => { throw new Error('broken'); },
@@ -74,7 +75,7 @@ test('Broken intentBuilder blocks', async () => {
 });
 
 test('Non-object Intent blocks', async () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'allow' }]);
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'allow' }]);
   const gated = wrapTool(makeTool(), {
     authz,
     intentBuilder: () => 'not an object',
@@ -86,7 +87,7 @@ test('Non-object Intent blocks', async () => {
 });
 
 test('Non-tool input raises AdapterConfigError', () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'allow' }]);
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'allow' }]);
   assert.throws(
     () => wrapTool(null, { authz, intentBuilder: () => ({ type: 'payment' }) }),
     (err) => err instanceof AdapterConfigError
@@ -94,7 +95,7 @@ test('Non-tool input raises AdapterConfigError', () => {
 });
 
 test('Tool without execute function raises AdapterConfigError', () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'allow' }]);
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'allow' }]);
   assert.throws(
     () => wrapTool({ name: 'bad' }, { authz, intentBuilder: () => ({ type: 'payment' }) }),
     (err) => err instanceof AdapterConfigError
@@ -102,7 +103,7 @@ test('Tool without execute function raises AdapterConfigError', () => {
 });
 
 test('wrapExecute function form works', async () => {
-  const authz = makeAuthz([{ action_type: 'payment', effect: 'allow' }]);
+  const authz = makeAuthz([{ match: { action_type: 'payment' }, effect: 'allow' }]);
   const execute = wrapExecute(
     async ({ amount, toAccount }) => `Transferred $${amount}`,
     { authz, toolName: 'transfer', intentBuilder: (args) => ({ type: 'payment' }) }

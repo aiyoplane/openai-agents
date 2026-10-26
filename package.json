@@ -1,6 +1,6 @@
 {
   "name": "@aiyoplane/openai-agents",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AEAP Composition Boundary Adapter for the OpenAI Agents SDK. Thin wrapper that attaches the Runtime Decision Point to agent tool invocations.",
   "keywords": [
     "aiyo",
